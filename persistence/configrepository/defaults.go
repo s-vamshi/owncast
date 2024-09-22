@@ -1,18 +1,9 @@
-package data
+package configrepository
 
 import (
 	"github.com/owncast/owncast/config"
 	"github.com/owncast/owncast/models"
 )
-
-// HasPopulatedDefaults will determine if the defaults have been inserted into the database.
-func HasPopulatedDefaults() bool {
-	hasPopulated, err := _datastore.GetBool("HAS_POPULATED_DEFAULTS")
-	if err != nil {
-		return false
-	}
-	return hasPopulated
-}
 
 func hasPopulatedFederationDefaults() bool {
 	hasPopulated, err := _datastore.GetBool("HAS_POPULATED_FEDERATION_DEFAULTS")

@@ -10,12 +10,12 @@ import (
 	"github.com/owncast/owncast/auth"
 	"github.com/owncast/owncast/config"
 	"github.com/owncast/owncast/core/chat"
-	"github.com/owncast/owncast/core/data"
 	"github.com/owncast/owncast/core/rtmp"
 	"github.com/owncast/owncast/core/transcoder"
 	"github.com/owncast/owncast/core/webhooks"
 	"github.com/owncast/owncast/models"
 	"github.com/owncast/owncast/notifications"
+	"github.com/owncast/owncast/persistence/configrepository"
 	"github.com/owncast/owncast/persistence/tables"
 	"github.com/owncast/owncast/utils"
 	"github.com/owncast/owncast/yp"
@@ -34,10 +34,10 @@ var (
 // Start starts up the core processing.
 func Start() error {
 	resetDirectories()
+	configRepository := configrepository.Get()
+	configRepository.PopulateDefaults()
 
-	data.PopulateDefaults()
-
-	if err := data.VerifySettings(); err != nil {
+	if err := configRepository.VerifySettings(); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -56,8 +56,8 @@ func Start() error {
 		log.Errorln("storage error", err)
 	}
 
-	tables.SetupUsers(data.GetDatastore().DB)
-	auth.Setup(data.GetDatastore())
+	tables.SetupUsers(configRepository.GetDatastore().DB)
+	auth.Setup(configRepository.GetDatastore())
 
 	fileWriter.SetupFileWriterReceiverService(&handler)
 
@@ -75,14 +75,14 @@ func Start() error {
 	// start the rtmp server
 	go rtmp.Start(setStreamAsConnected, setBroadcaster)
 
-	rtmpPort := data.GetRTMPPortNumber()
+	rtmpPort := configRepository.GetRTMPPortNumber()
 	if rtmpPort != 1935 {
 		log.Infof("RTMP is accepting inbound streams on port %d.", rtmpPort)
 	}
 
 	webhooks.SetupWebhooks(GetStatus)
 
-	notifications.Setup(data.GetStore())
+	notifications.Setup(configRepository.GetStore())
 
 	return nil
 }
@@ -113,7 +113,8 @@ func transitionToOfflineVideoStreamContent() {
 	go _transcoder.Start(false)
 
 	// Copy the logo to be the thumbnail
-	logo := data.GetLogoPath()
+	configRepository := configrepository.Get()
+	logo := configRepository.GetLogoPath()
 	dst := filepath.Join(config.TempDir, "thumbnail.jpg")
 	if err = utils.Copy(filepath.Join("data", logo), dst); err != nil {
 		log.Warnln(err)
@@ -130,7 +131,8 @@ func resetDirectories() {
 	utils.CleanupDirectory(config.HLSStoragePath)
 
 	// Remove the previous thumbnail
-	logo := data.GetLogoPath()
+	configRepository := configrepository.Get()
+	logo := configRepository.GetLogoPath()
 	if utils.DoesFileExists(logo) {
 		err := utils.Copy(path.Join("data", logo), filepath.Join(config.DataDirectory, "thumbnail.jpg"))
 		if err != nil {

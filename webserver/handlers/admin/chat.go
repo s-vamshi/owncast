@@ -13,6 +13,7 @@ import (
 	"github.com/owncast/owncast/core/chat/events"
 	"github.com/owncast/owncast/core/data"
 	"github.com/owncast/owncast/models"
+	"github.com/owncast/owncast/persistence/configrepository"
 	"github.com/owncast/owncast/persistence/userrepository"
 	"github.com/owncast/owncast/utils"
 	"github.com/owncast/owncast/webserver/handlers/generated"
@@ -366,7 +367,8 @@ func SetEnableEstablishedChatUserMode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := data.SetChatEstablishedUsersOnlyMode(configValue.Value.(bool)); err != nil {
+	configRepository := configrepository.Get()
+	if err := configRepository.SetChatEstablishedUsersOnlyMode(configValue.Value.(bool)); err != nil {
 		webutils.WriteSimpleResponse(w, false, err.Error())
 		return
 	}

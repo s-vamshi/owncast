@@ -11,6 +11,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/owncast/owncast/config"
 	"github.com/owncast/owncast/db"
+	"github.com/owncast/owncast/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -46,10 +47,10 @@ func (ds *Datastore) GetQueries() *db.Queries {
 }
 
 // Get will query the database for the key and return the entry.
-func (ds *Datastore) Get(key string) (ConfigEntry, error) {
+func (ds *Datastore) Get(key string) (models.ConfigEntry, error) {
 	cachedValue, err := ds.GetCachedValue(key)
 	if err == nil {
-		return ConfigEntry{
+		return models.ConfigEntry{
 			Key:   key,
 			Value: cachedValue,
 		}, nil
@@ -60,10 +61,10 @@ func (ds *Datastore) Get(key string) (ConfigEntry, error) {
 
 	row := ds.DB.QueryRow("SELECT key, value FROM datastore WHERE key = ? LIMIT 1", key)
 	if err := row.Scan(&resultKey, &resultValue); err != nil {
-		return ConfigEntry{}, err
+		return models.ConfigEntry{}, err
 	}
 
-	result := ConfigEntry{
+	result := models.ConfigEntry{
 		Key:   resultKey,
 		Value: resultValue,
 	}
@@ -73,7 +74,7 @@ func (ds *Datastore) Get(key string) (ConfigEntry, error) {
 }
 
 // Save will save the ConfigEntry to the database.
-func (ds *Datastore) Save(e ConfigEntry) error {
+func (ds *Datastore) Save(e models.ConfigEntry) error {
 	ds.DbLock.Lock()
 	defer ds.DbLock.Unlock()
 
@@ -93,7 +94,6 @@ func (ds *Datastore) Save(e ConfigEntry) error {
 		return err
 	}
 	_, err = stmt.Exec(e.Key, dataGob.Bytes())
-
 	if err != nil {
 		return err
 	}
@@ -106,6 +106,15 @@ func (ds *Datastore) Save(e ConfigEntry) error {
 	ds.SetCachedValue(e.Key, dataGob.Bytes())
 
 	return nil
+}
+
+// HasPopulatedDefaults will determine if the defaults have been inserted into the database.
+func HasPopulatedDefaults() bool {
+	hasPopulated, err := _datastore.GetBool("HAS_POPULATED_DEFAULTS")
+	if err != nil {
+		return false
+	}
+	return hasPopulated
 }
 
 // Setup will create the datastore table and perform initial initialization.
